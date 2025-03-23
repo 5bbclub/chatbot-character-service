@@ -4,20 +4,33 @@ package fetchers
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/5bbclub/chatbot-character-service/cmd/crawler/config"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"time"
 )
 
+var (
+	_ Fetcher = (*BabechatFetcher)(nil)
+)
+
 // BabechatFetcher는 Babechat 데이터를 크롤링하기 위한 구조체입니다.
 type BabechatFetcher struct {
-	APIEndpoint string
+	BaseFetcher
+	conf          *config.Config
+	OutputChannel chan interface{} // 데이터를 전달할 채널
 }
 
 // NewBabechatFetcher는 BabechatFetcher 인스턴스를 생성합니다.
-func NewBabechatFetcher(apiEndpoint string) *BabechatFetcher {
+func NewBabechatFetcher(conf *config.Config) *BabechatFetcher {
+	interval := time.Duration(conf.Services[0].Interval) * time.Second
 	return &BabechatFetcher{
-		APIEndpoint: apiEndpoint,
+		BaseFetcher: BaseFetcher{
+			Name:     "BabeChatFetcher",
+			Interval: interval,
+		},
+		conf: conf,
 	}
 }
 
@@ -38,12 +51,45 @@ func (b *BabechatFetcher) GetServiceName() string {
 	return "babechat"
 }
 
+// Start: 데이터를 주기적으로 가져오는 프로세스 시작
+func (f *BabechatFetcher) Start() {
+	ticker := time.NewTicker(f.Interval)
+	log.Printf("[%s] Fetcher started", f.Name)
+	for {
+		select {
+		case <-ticker.C:
+			dataBytes, err := f.Fetch()
+			if err != nil {
+				log.Printf("[%s] Failed to fetch data: %v", f.Name, err)
+				continue
+			}
+
+			var characters []BabechatCharacter
+			err = json.Unmarshal(dataBytes, &characters)
+			if err != nil {
+				fmt.Errorf("failed to parse JSON: %w", err)
+			}
+
+			for _, character := range characters {
+				f.OutputChannel <- character
+			}
+
+			//log.Printf("[%s] Fetched data: %v", f.Name, data)
+		}
+	}
+}
+
+func (b *BabechatFetcher) SetOutputChannel(channel chan interface{}) {
+	b.OutputChannel = channel
+}
+
 // FetchData는 Babechat API에서 데이터를 가져옵니다.
-func (b *BabechatFetcher) FetchData() ([]interface{}, error) {
-	client := &http.Client{Timeout: 10 * time.Second}
+func (b *BabechatFetcher) Fetch() ([]byte, error) {
+	client := &http.Client{Timeout: 20 * time.Second}
 
 	// HTTP 요청 보내기
-	resp, err := client.Get(b.APIEndpoint)
+	//FIXME: services 이름으로 config 인자를 받기
+	resp, err := client.Get(b.conf.Services[0].Endpoint)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch data from Babechat: %w", err)
 	}
@@ -60,17 +106,5 @@ func (b *BabechatFetcher) FetchData() ([]interface{}, error) {
 		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 
-	var characters []BabechatCharacter
-	err = json.Unmarshal(body, &characters)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse JSON: %w", err)
-	}
-
-	// 인터페이스 타입으로 변환
-	var data []interface{}
-	for _, character := range characters {
-		data = append(data, character)
-	}
-
-	return data, nil
+	return body, nil
 }

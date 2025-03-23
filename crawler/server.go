@@ -2,14 +2,12 @@
 package crawler
 
 import (
-	"github.com/5bbclub/chatbot-character-service/utils/database"
-	"log"
-	"time"
-
 	"github.com/5bbclub/chatbot-character-service/cmd/crawler/config"
 	"github.com/5bbclub/chatbot-character-service/crawler/fetchers"
 	"github.com/5bbclub/chatbot-character-service/crawler/processors"
 	"github.com/5bbclub/chatbot-character-service/crawler/scheduler"
+	"github.com/5bbclub/chatbot-character-service/utils/database"
+	"log"
 )
 
 func Run(conf *config.Config) {
@@ -20,21 +18,24 @@ func Run(conf *config.Config) {
 	if err != nil {
 		log.Fatalf("❌ Failed to initialize database: %v", err)
 	}
+	if database.DB == nil {
+		log.Fatalf("❌ Database is not initialized")
+	}
 	//defer database.CloseDB()
-
-	// 스케줄러 초기화
-	jobScheduler := scheduler.NewScheduler()
 
 	// 각 서비스 설정을 처리
 	for _, service := range conf.Services {
 		log.Printf("Registering service: %s (Interval: %d seconds)", service.Name, service.Interval)
 
-		var fetcher fetchers.DataFetcher
-
 		// 서비스에 맞는 Fetcher 생성
 		switch service.Name {
 		case "Babechat":
-			fetcher = fetchers.NewBabechatFetcher(service.Endpoint)
+			babechatScheduler := &scheduler.JobScheduler{
+				Name:          "babechat",
+				FetcherImpl:   fetchers.NewBabechatFetcher(conf),
+				ProcessorImpl: processors.NewBabeChatProcessor(conf, database.DB),
+			}
+			go babechatScheduler.Start()
 		case "Wrtn":
 			//fetcher = fetchers.NewWrtnFetcher(service.Endpoint)
 		case "Lofan":
@@ -45,23 +46,7 @@ func Run(conf *config.Config) {
 			log.Printf("No fetcher available for service: %s", service.Name)
 			continue
 		}
-
-		// 작업 추가
-		jobScheduler.AddJob(
-			service.Name,
-			time.Duration(service.Interval)*time.Second,
-			func() {
-				log.Printf("Running fetch and process for service: %s", service.Name)
-				err := processors.ProcessData(fetcher)
-				if err != nil {
-					log.Printf("⛔ Error processing %s data: %v", service.Name, err)
-				}
-			},
-		)
 	}
-
-	// 스케줄러 시작
-	jobScheduler.Start()
 
 	// 프로그램 실행 중 유지
 	select {}

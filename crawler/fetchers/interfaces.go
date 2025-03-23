@@ -1,9 +1,8 @@
 // crawler/fetchers/interfaces.go
 package fetchers
 
-// DataFetcher는 모든 크롤링 서비스를 위한 공통 인터페이스입니다.
-type DataFetcher interface {
-	GetServiceName() string
-	// FetchData는 서비스에서 데이터를 가져오는 함수입니다.
-	FetchData() ([]interface{}, error)
+type Fetcher interface {
+	Start()                            // 데이터를 가져와서 전달
+	SetOutputChannel(chan interface{}) // 데이터를 전달할 채널 설정
+	Fetch() ([]byte, error)            // 데이터를 가져옴
 }

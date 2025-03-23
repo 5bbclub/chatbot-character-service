@@ -1,63 +1,31 @@
-// crawler/scheduler/scheduler.go
 package scheduler
 
 import (
+	"github.com/5bbclub/chatbot-character-service/crawler/fetchers"
+	"github.com/5bbclub/chatbot-character-service/crawler/processors"
 	"log"
-	"time"
 )
 
-type Job struct {
-	Name     string
-	Interval time.Duration
-	Action   func()
+type JobScheduler struct {
+	Name          string               // Scheduler 이름 (서비스 명칭)
+	FetcherImpl   fetchers.Fetcher     // Fetcher 구현체
+	ProcessorImpl processors.Processor // Processor 구현체
 }
 
-type Scheduler struct {
-	jobs []Job
-	done chan bool
-}
+// Start: Fetcher와 Processor를 실행
+func (s *JobScheduler) Start() {
+	log.Printf("[Scheduler: %s] Starting...", s.Name)
 
-// NewScheduler는 새로운 스케줄러 인스턴스를 반환합니다.
-func NewScheduler() *Scheduler {
-	return &Scheduler{
-		jobs: []Job{},
-		done: make(chan bool),
-	}
-}
+	// Fetcher와 Processor 간 데이터 채널 공유
+	dataChannel := make(chan interface{}, 500)
 
-// AddJob은 스케줄러에 새로운 작업을 추가합니다.
-func (s *Scheduler) AddJob(name string, interval time.Duration, action func()) {
-	job := Job{
-		Name:     name,
-		Interval: interval,
-		Action:   action,
-	}
-	s.jobs = append(s.jobs, job)
-}
+	// Fetcher 초기화 및 실행
+	s.FetcherImpl.SetOutputChannel(dataChannel)
+	go s.FetcherImpl.Start()
 
-// Start는 스케줄러가 작업을 주기적으로 실행하도록 시작합니다.
-func (s *Scheduler) Start() {
-	log.Println("⏱️ Starting the job scheduler...")
-	for _, job := range s.jobs {
-		go func(j Job) {
-			ticker := time.NewTicker(j.Interval)
-			defer ticker.Stop()
+	// Processor 초기화 및 실행
+	s.ProcessorImpl.SetInputChannel(dataChannel)
+	go s.ProcessorImpl.Start()
 
-			for {
-				select {
-				case <-ticker.C:
-					log.Printf("🚀 Executing job: %s\n", j.Name)
-					j.Action()
-				case <-s.done:
-					return
-				}
-			}
-		}(job)
-	}
-}
-
-// Stop은 스케줄러를 종료합니다.
-func (s *Scheduler) Stop() {
-	log.Println("🛑 Stopping the job scheduler...")
-	close(s.done)
+	log.Printf("[Scheduler: %s] All components started", s.Name)
 }
