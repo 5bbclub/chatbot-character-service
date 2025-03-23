@@ -2,7 +2,7 @@ package api
 
 import (
 	"fmt"
-	"github.com/5bbclub/chatbot-character-service/config"
+	"github.com/5bbclub/chatbot-character-service/cmd/api/config"
 	"log"
 	"net/http"
 )
