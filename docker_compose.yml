@@ -1,0 +1,18 @@
+version: "3.8"
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: docker/api/Dockerfile
+    ports:
+      - "8080:8080"
+    env_file: config/.env.example
+
+  crawler:
+    build:
+      context: .
+      dockerfile: docker/crawler/Dockerfile
+    ports:
+      - "9090:9090"
+    env_file: config/.env.example
