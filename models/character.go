@@ -13,6 +13,12 @@ type Character struct {
 	Name              string          `gorm:"type:varchar(255);not null"`   // 캐릭터 이름
 	Description       string          `gorm:"type:text"`                    // 캐릭터 설명
 	ProfileImageURL   string          `gorm:"type:varchar(255)"`            // 프로필 이미지 URL
+	ChatCount         uint            `gorm:"default:0"`                    // 채팅 횟수
+	ChatUserCount     uint            `gorm:"default:0"`                    // 채팅 사용자 수
+	LikeCount         uint            `gorm:"default:0"`                    // 좋아요 횟수
+	CountryCode       string          `gorm:"type:varchar(2)"`              // 국가 코드
+	IsAdult           bool            `gorm:"default:false"`                // 성인 캐릭터 여부
+	IsFeatured        bool            `gorm:"default:false"`                // 추천 캐릭터 여부
 	CreatedAt         time.Time       `gorm:"autoCreateTime"`               // 생성 시간
 	UpdatedAt         time.Time       `gorm:"autoUpdateTime"`               // 수정 시간
 	DeletedAt         gorm.DeletedAt  `gorm:"index"`                        // 소프트 삭제 필드
