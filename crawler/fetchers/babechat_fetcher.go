@@ -18,8 +18,7 @@ var (
 // BabechatFetcher는 Babechat 데이터를 크롤링하기 위한 구조체입니다.
 type BabechatFetcher struct {
 	BaseFetcher
-	conf          *config.Config
-	OutputChannel chan interface{} // 데이터를 전달할 채널
+	conf *config.Config
 }
 
 // NewBabechatFetcher는 BabechatFetcher 인스턴스를 생성합니다.
@@ -37,6 +36,7 @@ func NewBabechatFetcher(conf *config.Config) *BabechatFetcher {
 // BabechatCharacter는 Babechat API에서 반환되는 데이터 구조입니다.
 type BabechatCharacter struct {
 	ID              string   `json:"id"`
+	CharacterID     string   `json:"characterId"`
 	ChatCount       int      `json:"chatCount"`
 	LikeCount       int      `json:"likeCount"`
 	Name            string   `json:"name"`

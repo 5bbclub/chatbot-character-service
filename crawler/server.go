@@ -37,7 +37,12 @@ func Run(conf *config.Config) {
 			}
 			go babechatScheduler.Start()
 		case "Wrtn":
-			//fetcher = fetchers.NewWrtnFetcher(service.Endpoint)
+			wrtnScheduler := &scheduler.JobScheduler{
+				Name:          "wrtn",
+				FetcherImpl:   fetchers.NewWrtnFetcher(conf),
+				ProcessorImpl: processors.NewWrtnProcessor(conf, database.DB),
+			}
+			go wrtnScheduler.Start()
 		case "Lofan":
 			// Lofan용 Fetcher를 추가할 때 필요
 			log.Printf("Lofan fetcher is not implemented yet.")

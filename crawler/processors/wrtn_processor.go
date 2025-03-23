@@ -10,19 +10,19 @@ import (
 )
 
 var (
-	_ Processor = (*BabeChatProcessor)(nil)
+	_ Processor = (*WrtnProcessor)(nil)
 )
 
-type BabeChatProcessor struct {
+type WrtnProcessor struct {
 	BaseProcessor
 	conf *config.Config
 	db   *gorm.DB
 }
 
-func NewBabeChatProcessor(conf *config.Config, db *gorm.DB) *BabeChatProcessor {
-	return &BabeChatProcessor{
+func NewWrtnProcessor(conf *config.Config, db *gorm.DB) *WrtnProcessor {
+	return &WrtnProcessor{
 		BaseProcessor: BaseProcessor{
-			Name:         "BabeChatProcessor",
+			Name:         "WrtnProcessor",
 			InputChannel: make(chan interface{}, 100),
 		},
 		conf: conf,
@@ -30,55 +30,58 @@ func NewBabeChatProcessor(conf *config.Config, db *gorm.DB) *BabeChatProcessor {
 	}
 }
 
-func (b *BabeChatProcessor) GetServiceName() string {
-	return "babechat"
+func (w *WrtnProcessor) GetServiceName() string {
+	return "wrtn"
 }
 
-func (b *BabeChatProcessor) Start() {
+func (w *WrtnProcessor) SetInputChannel(c chan interface{}) {
+	w.InputChannel = c
+}
+
+func (w *WrtnProcessor) Start() {
 	log.Println("Processor: Waiting for data to process...")
-	for data := range b.InputChannel {
+	for data := range w.InputChannel {
 		log.Println("Processor: Got data from channel, processing...")
-		if err := b.Process(data); err != nil {
+		if err := w.Process(data); err != nil {
 			log.Printf("Processor: Error processing data: %v\n", err)
 		}
 	}
 }
 
-func (b *BabeChatProcessor) SetInputChannel(channel chan interface{}) {
-	b.InputChannel = channel
-}
-
-func (b *BabeChatProcessor) FormatData(data interface{}) (*models.CharacterInput, error) {
-	character, ok := data.(fetchers.BabechatCharacter)
+func (w *WrtnProcessor) FormatData(data interface{}) (models.CharacterInput, error) {
+	characterData, ok := data.(fetchers.WrtnCharacterDetail)
 	if !ok {
-		return nil, fmt.Errorf("failed to parse character data")
+		return models.CharacterInput{}, fmt.Errorf("failed to parse character data")
 	}
-	return &models.CharacterInput{
-		ServiceProviderName: b.GetServiceName(),
-		InternalID:          character.CharacterID,
-		Name:                character.Name,
-		Description:         character.Description,
-		ProfileImageURL:     character.MainImage,
-		TagNames:            character.Tags,
+
+	return models.CharacterInput{
+		ServiceProviderName: w.GetServiceName(),
+		InternalID:          characterData.ID,
+		Name:                characterData.Name,
+		Description:         characterData.Description,
+		ProfileImageURL:     characterData.ProfileImage.Origin,
+		TagNames:            characterData.Tags,
 		Creator: models.Creator{
-			Name: character.CreatorNickname,
+			Name: characterData.Creator.Nickname,
 		},
 	}, nil
 }
 
-func (b *BabeChatProcessor) Process(data interface{}) error {
+func (w *WrtnProcessor) Process(data interface{}) error {
+	log.Printf("[%s ]Processor: Processing data\n", w.GetServiceName())
 	// 1. character 데이터를 CharacterInput으로 변환
-	characterInput, err := b.FormatData(data)
+	characterInput, err := w.FormatData(data)
 	if err != nil {
 		return fmt.Errorf("failed to parse character data: %v", err)
 	}
 
 	// 2. 트랜잭션 시작
-	return b.db.Transaction(func(tx *gorm.DB) error {
+	return w.db.Transaction(func(tx *gorm.DB) error {
 		// ---------------------------
 		// 1. 서비스 제공자 저장/조회
 		// ---------------------------
 		var serviceProvider models.ServiceProvider
+
 		if err := tx.FirstOrCreate(&serviceProvider, models.ServiceProvider{
 			Name: characterInput.ServiceProviderName,
 		}).Error; err != nil {

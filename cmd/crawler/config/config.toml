@@ -20,8 +20,8 @@ interval = 10  # 호출 주기: 초 단위
 
 [[services]]
 name = "Wrtn"
-endpoint = "https://api.wrtnapi.com/data"
-interval = 3600  # 호출 주기: 초 단위 (1시간)
+endpoint = "https://api.wrtn.ai/be/characters?limit=10&sort=likeCount"
+interval = 10  # 호출 주기: 초 단위
 
 [[services]]
 name = "Lofan"
