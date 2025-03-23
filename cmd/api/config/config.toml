@@ -1,0 +1,21 @@
+# config/crawler_config.toml
+
+# 공통 설정
+[general]
+log_level = "info"  # 로그 레벨: debug, info, error 등
+
+# 서비스별 설정
+[[services]]
+name = "Babechat"
+endpoint = "https://api.babechatapi.com/ko/api/characters/babies"
+interval = 1800  # 호출 주기: 초 단위 (30분)
+
+[[services]]
+name = "Wrtn"
+endpoint = "https://api.wrtnapi.com/data"
+interval = 3600  # 호출 주기: 초 단위 (1시간)
+
+[[services]]
+name = "Lofan"
+endpoint = "https://api.lofanapi.com/api/characters"
+interval = 3600  # 호출 주기: 초 단위 (1시간)
